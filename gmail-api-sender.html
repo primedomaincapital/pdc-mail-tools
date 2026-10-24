@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html><head><title>Gmail API Sender</title>
+<style>
+body { font-family: monospace; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+input, textarea { width: 100%; margin: 5px 0 15px; padding: 8px; box-sizing: border-box; }
+button { padding: 12px 30px; font-size: 16px; cursor: pointer; }
+#result { margin-top: 20px; padding: 15px; border: 1px solid #ccc; white-space: pre-wrap; word-break: break-all; }
+.success { background: #e8f5e9; }
+.error { background: #ffebee; }
+</style></head><body>
+<h1>Gmail API Sender</h1>
+<p>Paste a short-lived access token and a raw RFC 822 email, then send via the Gmail API.</p>
+
+<label>Access Token:</label>
+<input type="password" id="token" placeholder="ya29..." autocomplete="off">
+
+<label>Raw Email (full RFC 822 message with headers):</label>
+<textarea id="rawEmail" rows="20" placeholder="From: ...&#10;To: ...&#10;Subject: ...&#10;&#10;Body..."></textarea>
+
+<button onclick="sendEmail()">Send Email</button>
+<button onclick="testProfile()">Test Token (Profile)</button>
+
+<div id="result">Ready.</div>
+
+<script>
+function b64url(str) {
+  const bytes = new TextEncoder().encode(str);
+  let b64 = btoa(String.fromCharCode(...bytes));
+  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function testProfile() {
+  const token = document.getElementById('token').value.trim();
+  const el = document.getElementById('result');
+  el.textContent = 'Testing token...';
+  el.className = '';
+  try {
+    const r = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const j = await r.json();
+    el.textContent = 'HTTP ' + r.status + '\n' + JSON.stringify(j, null, 2);
+    el.className = r.ok ? 'success' : 'error';
+  } catch (e) {
+    el.textContent = 'ERROR: ' + e.message;
+    el.className = 'error';
+  }
+}
+
+async function sendEmail() {
+  const token = document.getElementById('token').value.trim();
+  const raw = document.getElementById('rawEmail').value;
+  const el = document.getElementById('result');
+  if (!token || !raw) { el.textContent = 'Need both token and email.'; el.className = 'error'; return; }
+  el.textContent = 'Sending...';
+  el.className = '';
+  try {
+    const r = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw: b64url(raw) })
+    });
+    const j = await r.json();
+    el.textContent = 'HTTP ' + r.status + '\n' + JSON.stringify(j, null, 2);
+    el.className = r.ok ? 'success' : 'error';
+  } catch (e) {
+    el.textContent = 'ERROR: ' + e.message;
+    el.className = 'error';
+  }
+}
+</script>
+</body></html>
