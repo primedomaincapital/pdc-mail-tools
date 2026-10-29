@@ -17,6 +17,7 @@ td, th { border: 1px solid #ccc; padding: 6px; text-align: left; font-size: 13px
 <input type="password" id="token" placeholder="ya29..." autocomplete="off">
 <button onclick="loadStoredToken()">Use stored browser token (refresh)</button>
 <button onclick="listInbox()">List Inbox (headers only)</button>
+<button onclick="listTrash()">List Trash (headers only)</button>
 <button onclick="testProfile()">Test Token (Profile)</button>
 <div id="list"></div>
 <h2>Act on one message by ID</h2>
@@ -90,6 +91,26 @@ async function listInbox() {
   rows += '</table>';
   listEl.innerHTML = rows;
   show(el, 'Inbox: ' + msgs.length + ' messages listed (headers only).', true);
+}
+async function listTrash() {
+  const el = document.getElementById('result');
+  const listEl = document.getElementById('list');
+  if (!tok()) { show(el, 'Need a token.', false); return; }
+  el.textContent = 'Listing trash...'; el.className = '';
+  const { status, ok, j } = await api('/messages?labelIds=TRASH&maxResults=50');
+  if (!ok) { show(el, 'HTTP ' + status + '\n' + JSON.stringify(j, null, 2), false); return; }
+  const msgs = j.messages || [];
+  let rows = '<table><tr><th>ID</th><th>Date</th><th>From</th><th>Subject</th><th>Labels</th></tr>';
+  for (const m of msgs) {
+    const g = await api('/messages/' + m.id + '?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date');
+    const h = {};
+    (g.j.payload && g.j.payload.headers || []).forEach(x => h[x.name] = x.value);
+    const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    rows += '<tr><td>' + m.id + '</td><td>' + esc(h.Date) + '</td><td>' + esc(h.From) + '</td><td>' + esc(h.Subject) + '</td><td>' + (g.j.labelIds || []).join(', ') + '</td></tr>';
+  }
+  rows += '</table>';
+  listEl.innerHTML = rows;
+  show(el, 'Trash: ' + msgs.length + ' messages listed (headers only).', true);
 }
 async function modify(id, add, remove, verb) {
   const el = document.getElementById('result');
