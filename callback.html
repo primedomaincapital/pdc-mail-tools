@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html><head><title>OAuth Callback</title>
+<style>
+body { font-family: monospace; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+input { width: 100%; margin: 5px 0 15px; padding: 8px; box-sizing: border-box; }
+button { padding: 10px 24px; font-size: 15px; cursor: pointer; margin: 2px; }
+#result { margin-top: 20px; padding: 15px; border: 1px solid #ccc; white-space: pre-wrap; word-break: break-all; }
+.success { background: #e8f5e9; }
+.error { background: #ffebee; }
+</style></head><body>
+<h1>OAuth Callback</h1>
+<p>This page receives the authorization code after Google consent. It never sends the code anywhere except the token exchange you trigger below, and it never displays a token value.</p>
+<div id="codeBox">Waiting for code in URL...</div>
+<label>Client ID:</label>
+<input type="text" id="clientId" placeholder="...apps.googleusercontent.com">
+<label>Client Secret:</label>
+<input type="password" id="clientSecret" autocomplete="off">
+<button onclick="exchange()">Exchange code for tokens</button>
+<button onclick="testCors()">Test token-endpoint reachability (no credentials)</button>
+<div id="result">Ready.</div>
+<script>
+const params = new URLSearchParams(location.search);
+const code = params.get('code');
+const err = params.get('error');
+const box = document.getElementById('codeBox');
+if (err) { box.textContent = 'Authorization error: ' + err; }
+else if (code) { box.textContent = 'Code received (length ' + code.length + '). Ready to exchange.'; }
+else { box.textContent = 'No code in URL. If you landed here without one, re-run consent.'; }
+async function testCors() {
+  const el = document.getElementById('result');
+  try {
+    const r = await fetch('https://accounts.google.com/o/oauth2/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'grant_type=authorization_code&code=test&client_id=test&client_secret=test&redirect_uri=https://primedomaincapital.github.io/pdc-mail-tools/callback.html' });
+    const t = await r.text();
+    el.textContent = 'Token endpoint reachable from browser. HTTP ' + r.status + '. Body: ' + t.slice(0, 200);
+    el.className = 'success';
+  } catch (e) {
+    el.textContent = 'Token endpoint NOT reachable from browser (likely CORS): ' + e.message;
+    el.className = 'error';
+  }
+}
+async function exchange() {
+  const el = document.getElementById('result');
+  const cid = document.getElementById('clientId').value.trim();
+  const sec = document.getElementById('clientSecret').value.trim();
+  if (!code || !cid || !sec) { el.textContent = 'Need a code in the URL plus client ID and secret.'; el.className = 'error'; return; }
+  el.textContent = 'Exchanging...'; el.className = '';
+  try {
+    const body = new URLSearchParams({ code: code, client_id: cid, client_secret: sec, redirect_uri: 'https://primedomaincapital.github.io/pdc-mail-tools/callback.html', grant_type: 'authorization_code' });
+    const r = await fetch('https://accounts.google.com/o/oauth2/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.refresh_token) { el.textContent = 'Exchange failed. HTTP ' + r.status + '. Error: ' + (j.error || 'no refresh token returned'); el.className = 'error'; return; }
+    try {
+      localStorage.setItem('pdc_gmail_modify_refresh', j.refresh_token);
+      localStorage.setItem('pdc_gmail_modify_client', JSON.stringify({ client_id: cid, client_secret: sec }));
+      el.textContent = 'SUCCESS. Refresh token and client credentials stored in this browser profile only. Access token expires in ' + j.expires_in + ' seconds. No token value is shown here.';
+      el.className = 'success';
+    } catch (e) {
+      el.textContent = 'Exchange succeeded but browser storage failed: ' + e.message + '. Do not retry blindly.';
+      el.className = 'error';
+    }
+  } catch (e) {
+    el.textContent = 'Exchange request failed (likely CORS): ' + e.message;
+    el.className = 'error';
+  }
+}
+</script>
+</body></html>
