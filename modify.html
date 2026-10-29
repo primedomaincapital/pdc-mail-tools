@@ -15,6 +15,7 @@ td, th { border: 1px solid #ccc; padding: 6px; text-align: left; font-size: 13px
 <p>File, archive, or trash mail via the Gmail API. Token must carry the gmail.modify scope. No message bodies are shown or sent anywhere — only IDs, subjects, and senders.</p>
 <label>Access Token:</label>
 <input type="password" id="token" placeholder="ya29..." autocomplete="off">
+<button onclick="loadStoredToken()">Use stored browser token (refresh)</button>
 <button onclick="listInbox()">List Inbox (headers only)</button>
 <button onclick="testProfile()">Test Token (Profile)</button>
 <div id="list"></div>
@@ -45,6 +46,24 @@ async function api(path, method, body) {
   });
   const j = await r.json().catch(() => ({}));
   return { status: r.status, ok: r.ok, j };
+}
+async function loadStoredToken() {
+  const el = document.getElementById('result');
+  const refresh = localStorage.getItem('pdc_gmail_modify_refresh');
+  const creds = localStorage.getItem('pdc_gmail_modify_client');
+  if (!refresh || !creds) { show(el, 'No stored modify token in this browser profile. Mint one on the callback page first.', false); return; }
+  const { client_id, client_secret } = JSON.parse(creds);
+  el.textContent = 'Refreshing access token...'; el.className = '';
+  try {
+    const body = new URLSearchParams({ refresh_token: refresh, client_id: client_id, client_secret: client_secret, grant_type: 'refresh_token' });
+    const r = await fetch('https://accounts.google.com/o/oauth2/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.access_token) { show(el, 'Token refresh failed. HTTP ' + r.status + '. Error: ' + (j.error || 'no access token'), false); return; }
+    document.getElementById('token').value = j.access_token;
+    show(el, 'Access token loaded from stored refresh token. Expires in ' + j.expires_in + ' seconds. Token value is not displayed.', true);
+  } catch (e) {
+    show(el, 'Token refresh request failed: ' + e.message, false);
+  }
 }
 async function testProfile() {
   const el = document.getElementById('result');
