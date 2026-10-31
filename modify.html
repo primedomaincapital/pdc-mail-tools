@@ -30,6 +30,8 @@ td, th { border: 1px solid #ccc; padding: 6px; text-align: left; font-size: 13px
   <option value="Label_3">PDC/Security (Label_3)</option>
   <option value="Label_4">PDC/Dynadot (Label_4)</option>
 </select>
+  <input type="text" id="newLabel" placeholder="e.g. PDC/Bounces">
+  <button onclick="createLabel()">Create Label</button>
 <button onclick="fileMsg()">File + Archive</button>
 <button onclick="archiveMsg()">Archive only</button>
 <button onclick="trashMsg()">Trash</button>
@@ -122,5 +124,19 @@ function fileMsg() { modify(document.getElementById('msgId').value.trim(), [docu
 function archiveMsg() { modify(document.getElementById('msgId').value.trim(), [], ['INBOX'], 'Archived'); }
 function trashMsg() { modify(document.getElementById('msgId').value.trim(), ['TRASH'], ['INBOX'], 'Trashed'); }
 function untrashMsg() { modify(document.getElementById('msgId').value.trim(), ['INBOX'], ['TRASH'], 'Restored'); }
+  async function createLabel() {
+    const el = document.getElementById('result');
+    const name = document.getElementById('newLabel').value.trim();
+    if (!tok() || !name) { show(el, 'Need a token and a label name.', false); return; }
+    const r = await api('/labels', 'POST', { name: name, labelListVisibility: 'labelShow', messageListVisibility: 'show' });
+    if (!r.ok || !r.j.id) { show(el, 'Create label failed. HTTP ' + r.status + ' ' + JSON.stringify(r.j), false); return; }
+    const sel = document.getElementById('labelId');
+    const opt = document.createElement('option');
+    opt.value = r.j.id;
+    opt.textContent = name + ' (' + r.j.id + ')';
+    sel.appendChild(opt);
+    sel.value = r.j.id;
+    show(el, 'Label created: ' + name, true);
+  }
 </script>
 </body></html>
