@@ -53,8 +53,8 @@ async function api(path, method, body) {
 }
 async function loadStoredToken() {
   const el = document.getElementById('result');
-  const refresh = localStorage.getItem('pdc_gmail_modify_refresh');
-  const creds = localStorage.getItem('pdc_gmail_modify_client');
+    const refresh = localStorage.getItem('pdc_gmail_refresh_156180854981');
+  const creds = localStorage.getItem('pdc_gmail_client_156180854981');
   if (!refresh || !creds) { show(el, 'No stored modify token in this browser profile. Mint one on the callback page first.', false); return; }
   const { client_id, client_secret } = JSON.parse(creds);
   el.textContent = 'Refreshing access token...'; el.className = '';
