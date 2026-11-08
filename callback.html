@@ -50,9 +50,10 @@ async function exchange() {
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.refresh_token) { el.textContent = 'Exchange failed. HTTP ' + r.status + '. Error: ' + (j.error || 'no refresh token returned'); el.className = 'error'; return; }
     try {
-      localStorage.setItem('pdc_gmail_modify_refresh', j.refresh_token);
-      localStorage.setItem('pdc_gmail_modify_client', JSON.stringify({ client_id: cid, client_secret: sec }));
-      el.textContent = 'SUCCESS. Refresh token and client credentials stored in this browser profile only. Access token expires in ' + j.expires_in + ' seconds. No token value is shown here.';
+            const keySuffix = cid.split('-')[0];
+      localStorage.setItem('pdc_gmail_refresh_' + keySuffix, j.refresh_token);
+      localStorage.setItem('pdc_gmail_client_' + keySuffix, JSON.stringify({ client_id: cid, client_secret: sec }));
+      el.textContent = 'SUCCESS. Refresh token and client credentials stored in this browser profile only (key suffix ' + keySuffix + '). Access token expires in ' + j.expires_in + ' seconds. No token value is shown here.';
       el.className = 'success';
     } catch (e) {
       el.textContent = 'Exchange succeeded but browser storage failed: ' + e.message + '. Do not retry blindly.';
